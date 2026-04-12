@@ -415,7 +415,8 @@ function renderCard(r,idx){
     </div>`;
   }
 
-  return`<div class="card" id="${id}" data-numeric="${numeric}" data-r='${JSON.stringify({term:r.term,soc:r.soc,status:r.status,change_type:r.change_type,grades:r.grades,definition_v5:r.definition_v5,definition_v6:r.definition_v6})}'>
+  RENDER_CACHE[idx]=r;
+  return`<div class="card" id="${id}" data-numeric="${numeric}" data-idx="${idx}">
     <div class="card-header" onclick="toggleCard('${id}')">
       <div class="ch-left">
         <div class="ct">${esc(r.term)}</div>
@@ -441,7 +442,7 @@ function toggleCard(id){
 
 function switchVer(cardId,ver,btn){
   const card=document.getElementById(cardId);
-  const r=JSON.parse(card.dataset.r);
+  const r=RENDER_CACHE[parseInt(card.dataset.idx)];
   const numeric=card.dataset.numeric==='true';
   const container=document.getElementById(cardId+'-grades');
   container.innerHTML=numeric?renderNumericGrades(r,ver):renderTextGrades(r,ver);
@@ -449,6 +450,7 @@ function switchVer(cardId,ver,btn){
   btn.classList.add('active');
 }
 
+const RENDER_CACHE={};
 let ALL=[],activeSoc='all',activeStatus='all',searchQ='';
 let currentFiltered=[],rendered=0;
 const CHUNK=40;
