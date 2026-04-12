@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTCAE Explorer — v5 vs v6 | Trialing Health</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;background:#F0F4F8;color:#1a1a1a;font-size:14px;line-height:1.5}
+
+/* ── App shell ── */
+.app-header{background:#1B4F8A;color:#fff;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;gap:16px;position:sticky;top:0;z-index:100}
+.app-header h1{font-size:16px;font-weight:600;letter-spacing:-0.3px}
+.header-sub{font-size:11px;opacity:0.6;margin-top:1px}
+.stat-pills{display:flex;gap:6px}
+.spill{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;background:rgba(255,255,255,0.12)}
+.spill.ch{background:rgba(245,158,11,0.35)}
+.spill.nw{background:rgba(16,185,129,0.35)}
+.spill.rm{background:rgba(239,68,68,0.3)}
+
+.app-body{display:grid;grid-template-columns:256px 1fr;min-height:calc(100vh - 56px)}
+
+/* ── Sidebar ── */
+.sidebar{background:#fff;border-right:1px solid #E5E7EB;padding:16px;overflow-y:auto;height:calc(100vh - 56px);position:sticky;top:56px}
+.sl{font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.6px;margin:0 0 7px}
+
+input[type=search]{width:100%;padding:8px 12px;border:1px solid #E5E7EB;border-radius:8px;font-size:13px;outline:none;background:#F9FAFB;color:#111;transition:border 0.15s}
+input[type=search]:focus{border-color:#1B4F8A;background:#fff;box-shadow:0 0 0 3px rgba(27,79,138,0.08)}
+
+.sb-sec{margin-bottom:20px}
+.filter-group{display:flex;flex-direction:column;gap:3px}
+.fb{padding:7px 10px;border:1px solid #E5E7EB;border-radius:7px;background:transparent;font-size:12px;cursor:pointer;text-align:left;color:#374151;display:flex;align-items:center;justify-content:space-between;gap:8px;transition:all 0.1s}
+.fb:hover{background:#F3F4F6}
+.fb.active{background:#EFF6FF;border-color:#1B4F8A;color:#1B4F8A;font-weight:500}
+.fb .fc{font-size:10px;color:#9CA3AF}
+.fb.active .fc{color:#6B93C4}
+
+.soc-list{display:flex;flex-direction:column;gap:2px;max-height:340px;overflow-y:auto}
+.soc-btn{padding:5px 8px;border:none;border-radius:5px;background:transparent;font-size:11px;cursor:pointer;text-align:left;color:#374151;display:flex;justify-content:space-between;gap:4px;line-height:1.35;transition:background 0.1s}
+.soc-btn:hover{background:#F3F4F6}
+.soc-btn.active{background:#EFF6FF;color:#1B4F8A;font-weight:500}
+.soc-btn .sc{font-size:10px;color:#9CA3AF;white-space:nowrap;flex-shrink:0}
+
+/* ── Main ── */
+.main{padding:20px;overflow-y:auto}
+.results-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.rc{font-size:13px;color:#6B7280}
+.clr{font-size:12px;color:#1B4F8A;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:4px}
+.clr:hover{background:#EFF6FF}
+
+.cards{display:flex;flex-direction:column;gap:12px}
+
+/* ── Term card ── */
+.card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;transition:border-color 0.15s,box-shadow 0.15s}
+.card:hover{border-color:#93C5FD;box-shadow:0 2px 12px rgba(27,79,138,0.07)}
+.card-header{padding:14px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;cursor:pointer;user-select:none}
+.ch-left{flex:1;min-width:0}
+.ct{font-size:14px;font-weight:500;color:#111827;margin-bottom:2px}
+.cs{font-size:10px;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:5px}
+.badges{display:flex;gap:5px;flex-wrap:wrap}
+.badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600}
+.b-new{background:#D1FAE5;color:#065F46}
+.b-removed{background:#FEE2E2;color:#991B1B}
+.b-clinical{background:#FEF3C7;color:#92400E}
+.b-pediatric{background:#EDE9FE;color:#4C1D95}
+.b-unchanged{background:#F3F4F6;color:#6B7280}
+.chevron{color:#9CA3AF;font-size:20px;flex-shrink:0;line-height:1;transition:transform 0.2s;padding-top:1px}
+.card.open .chevron{transform:rotate(180deg)}
+
+.card-body{display:none;padding:0 18px 18px;border-top:1px solid #F3F4F6}
+.card.open .card-body{display:block}
+
+/* ── Grade visualization ── */
+.grade-section{padding-top:16px}
+.gsec-label{font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px}
+
+/* Numeric scale bar */
+.scale-unit-tag{font-size:11px;font-weight:600;color:#6B7280;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.scale-bar{display:flex;height:52px;border-radius:10px;overflow:hidden;gap:2px;margin-bottom:4px}
+.sb-seg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;position:relative;padding:4px}
+.sb-g1{background:#ECFDF5}
+.sb-g2{background:#FFFBEB}
+.sb-g3{background:#FFF7ED}
+.sb-g4{background:#FEF2F2}
+.sb-g5{background:#111827}
+.sb-label{font-size:9px;font-weight:700;letter-spacing:0.5px}
+.sb-g1 .sb-label{color:#059669}
+.sb-g2 .sb-label{color:#D97706}
+.sb-g3 .sb-label{color:#EA580C}
+.sb-g4 .sb-label{color:#DC2626}
+.sb-g5 .sb-label{color:#6B7280}
+.sb-val{font-size:11px;font-weight:600;text-align:center;line-height:1.2}
+.sb-g1 .sb-val{color:#065F46}
+.sb-g2 .sb-val{color:#92400E}
+.sb-g3 .sb-val{color:#9A3412}
+.sb-g4 .sb-val{color:#991B1B}
+.sb-g5 .sb-val{color:#D1D5DB}
+
+/* v5 vs v6 mini comparison */
+.ver-compare{margin-top:14px;display:flex;flex-direction:column;gap:5px}
+.vc-row{display:flex;align-items:center;gap:8px}
+.vc-tag{font-size:10px;font-weight:700;width:28px;flex-shrink:0}
+.vc-v5 .vc-tag{color:#9CA3AF}
+.vc-v6 .vc-tag{color:#1B4F8A}
+.vc-segs{display:flex;gap:2px;flex:1;height:18px;border-radius:6px;overflow:hidden}
+.vc-seg{flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;border-radius:3px}
+.vc-g1{background:#ECFDF5;color:#059669}
+.vc-g2{background:#FFFBEB;color:#D97706}
+.vc-g3{background:#FFF7ED;color:#EA580C}
+.vc-g4{background:#FEF2F2;color:#DC2626}
+.vc-empty{background:#F3F4F6;color:#9CA3AF}
+
+.shift-note{margin-top:8px;font-size:10px;padding:6px 10px;border-radius:7px;line-height:1.45}
+.shift-clinical{background:#FEF3C7;color:#92400E}
+.shift-ok{background:#F3F4F6;color:#6B7280}
+
+/* Text chips */
+.chips-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.chip{border-radius:10px;padding:12px 13px;display:flex;flex-direction:column;gap:5px;border:1px solid transparent}
+.chip-g1{background:#ECFDF5;border-color:#A7F3D0}
+.chip-g2{background:#FFFBEB;border-color:#FDE68A}
+.chip-g3{background:#FFF7ED;border-color:#FDBA74}
+.chip-g4{background:#FEF2F2;border-color:#FECACA}
+.chip-g5{background:#111827;border-color:#374151}
+.chip-empty{background:#F9FAFB;border-color:#E5E7EB;opacity:0.5}
+.chip-head{display:flex;align-items:center;gap:5px}
+.chip-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.chip-g1 .chip-dot{background:#059669}
+.chip-g2 .chip-dot{background:#D97706}
+.chip-g3 .chip-dot{background:#EA580C}
+.chip-g4 .chip-dot{background:#DC2626}
+.chip-g5 .chip-dot{background:#4B5563}
+.chip-empty .chip-dot{background:#D1D5DB}
+.chip-glabel{font-size:9px;font-weight:700;letter-spacing:0.4px}
+.chip-g1 .chip-glabel{color:#059669}
+.chip-g2 .chip-glabel{color:#D97706}
+.chip-g3 .chip-glabel{color:#EA580C}
+.chip-g4 .chip-glabel{color:#DC2626}
+.chip-g5 .chip-glabel{color:#6B7280}
+.chip-empty .chip-glabel{color:#9CA3AF}
+.chip-text{font-size:11px;line-height:1.45}
+.chip-g1 .chip-text{color:#065F46}
+.chip-g2 .chip-text{color:#78350F}
+.chip-g3 .chip-text{color:#7C2D12}
+.chip-g4 .chip-text{color:#7F1D1D}
+.chip-g5 .chip-text{color:#D1D5DB}
+.chip-empty .chip-text{color:#9CA3AF;font-style:italic}
+.chip-changed-tag{font-size:8px;font-weight:700;padding:1px 6px;border-radius:8px;background:rgba(0,0,0,0.07);align-self:flex-start;margin-top:1px}
+.chip-g1 .chip-changed-tag{color:#065F46}
+.chip-g2 .chip-changed-tag{color:#78350F}
+.chip-g3 .chip-changed-tag{color:#7C2D12}
+.chip-g4 .chip-changed-tag{color:#7F1D1D}
+.chip-g5 .chip-changed-tag{color:#6B7280}
+
+/* version selector */
+.ver-selector{display:flex;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;width:fit-content;margin-bottom:14px}
+.vs-btn{padding:5px 14px;font-size:11px;font-weight:600;border:none;cursor:pointer;background:transparent;color:#6B7280;transition:all 0.15s}
+.vs-btn.active{background:#1B4F8A;color:#fff}
+
+.def-box{margin-top:14px;padding:10px 12px;background:#F9FAFB;border:1px solid #F3F4F6;border-radius:8px}
+.def-label{font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+.def-text{font-size:11px;line-height:1.55;color:#374151}
+
+.no-results{text-align:center;padding:56px 24px;color:#9CA3AF}
+.no-results .nr-big{font-size:28px;margin-bottom:8px;color:#D1D5DB}
+.loading{text-align:center;padding:60px;color:#9CA3AF;font-size:13px}
+
+.load-more-wrap{text-align:center;padding:20px}
+.load-more-btn{padding:8px 22px;border:1px solid #E5E7EB;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;color:#374151;transition:all 0.1s}
+.load-more-btn:hover{background:#F9FAFB;border-color:#1B4F8A;color:#1B4F8A}
+
+@media(max-width:680px){
+  .app-body{grid-template-columns:1fr}
+  .sidebar{height:auto;position:static;border-right:none;border-bottom:1px solid #E5E7EB}
+  .stat-pills{display:none}
+  .chips-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div>
+    <div class="app-header h1" style="font-size:16px;font-weight:600">CTCAE Explorer — v5 vs v6</div>
+    <div class="header-sub">Trialing Health · Internal medical team use</div>
+  </div>
+  <div class="stat-pills">
+    <span class="spill">897 terms</span>
+    <span class="spill ch">376 modified</span>
+    <span class="spill nw">60 new</span>
+    <span class="spill rm">47 removed</span>
+  </div>
+</div>
+
+<div class="app-body">
+  <div class="sidebar">
+    <div class="sb-sec">
+      <div class="sl">Search</div>
+      <input type="search" id="search" placeholder="Term, symptom..." autocomplete="off">
+    </div>
+
+    <div class="sb-sec">
+      <div class="sl">Filter by change</div>
+      <div class="filter-group">
+        <button class="fb active" data-status="all" onclick="setStatus('all',this)">All <span class="fc" id="cnt-all">897</span></button>
+        <button class="fb" data-status="changed" onclick="setStatus('changed',this)">Modified v5→v6 <span class="fc">376</span></button>
+        <button class="fb" data-status="clinical" onclick="setStatus('clinical',this)">Real clinical change <span class="fc">141</span></button>
+        <button class="fb" data-status="pediatric" onclick="setStatus('pediatric',this)">Paediatric language only <span class="fc">235</span></button>
+        <button class="fb" data-status="new" onclick="setStatus('new',this)">New in v6 <span class="fc">60</span></button>
+        <button class="fb" data-status="removed" onclick="setStatus('removed',this)">Removed in v6 <span class="fc">47</span></button>
+        <button class="fb" data-status="unchanged" onclick="setStatus('unchanged',this)">Unchanged <span class="fc">414</span></button>
+      </div>
+    </div>
+
+    <div class="sb-sec">
+      <div class="sl">System Organ Class (SOC)</div>
+      <div class="soc-list" id="soc-list"></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="results-bar">
+      <span class="rc" id="rc">Loading...</span>
+      <button class="clr" onclick="clearFilters()">Clear filters</button>
+    </div>
+    <div class="cards" id="cards"><div class="loading">Loading data...</div></div>
+  </div>
+</div>
+
+<script>
+const SOC_SHORT={
+  'Blood and lymphatic system disorders':'Blood & lymphatic',
+  'Cardiac disorders':'Cardiac','Congenital, familial and genetic disorders':'Congenital',
+  'Ear and labyrinth disorders':'Ear & labyrinth','Endocrine disorders':'Endocrine',
+  'Eye disorders':'Eye','Gastrointestinal disorders':'Gastrointestinal',
+  'General disorders and administration site conditions':'General disorders',
+  'Hepatobiliary disorders':'Hepatobiliary','Immune system disorders':'Immune system',
+  'Infections and infestations':'Infections',
+  'Injury, poisoning and procedural complications':'Injury & procedural',
+  'Investigations':'Investigations (lab)','Metabolism and nutrition disorders':'Metabolism',
+  'Musculoskeletal and connective tissue disorders':'Musculoskeletal',
+  'Neoplasms benign, malignant and unspecified (incl cysts and polyps)':'Neoplasms',
+  'Nervous system disorders':'Nervous system',
+  'Pregnancy, puerperium and perinatal conditions':'Pregnancy',
+  'Psychiatric disorders':'Psychiatric','Renal and urinary disorders':'Renal & urinary',
+  'Reproductive system and breast disorders':'Reproductive',
+  'Respiratory, thoracic and mediastinal disorders':'Respiratory',
+  'Skin and subcutaneous tissue disorders':'Skin','Social circumstances':'Social',
+  'Surgical and medical procedures':'Surgical procedures','Vascular disorders':'Vascular'
+};
+
+const NUMERIC_RE=/[\d\.]+\s*(?:mg\/dL|mmol\/L|\/mm3|\/mm³|x 10|mmHg|g\/dL|g\/L|%\s*BSA|x ULN|×\s*ULN|ULN|IU\/L|mL\/min|mL\/kg|µmol)/i;
+
+const GRADE_COLORS={
+  g1:{seg:'sb-g1',chip:'chip-g1',vc:'vc-g1',label:'G1'},
+  g2:{seg:'sb-g2',chip:'chip-g2',vc:'vc-g2',label:'G2'},
+  g3:{seg:'sb-g3',chip:'chip-g3',vc:'vc-g3',label:'G3'},
+  g4:{seg:'sb-g4',chip:'chip-g4',vc:'vc-g4',label:'G4'},
+  g5:{seg:'sb-g5',chip:'chip-g5',vc:'vc-empty',label:'G5'}
+};
+
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function isNumeric(r){
+  for(const g of['g1','g2','g3','g4','g5']){
+    const v=r.grades[g].v6||r.grades[g].v5;
+    if(NUMERIC_RE.test(v))return true;
+  }
+  return false;
+}
+
+function extractUnit(r){
+  const all=Object.values(r.grades).map(g=>g.v6||g.v5).join(' ');
+  if(/\/mm3|\/mm³/i.test(all))return'cells/mm³';
+  if(/mg\/dL/i.test(all))return'mg/dL';
+  if(/mmHg/i.test(all))return'mmHg';
+  if(/g\/dL/i.test(all))return'g/dL';
+  if(/mmol\/L/i.test(all))return'mmol/L';
+  if(/x ULN|×\s*ULN|ULN/i.test(all))return'× ULN';
+  if(/mL\/min/i.test(all))return'mL/min/1.73m²';
+  if(/% BSA|BSA/i.test(all))return'% BSA';
+  return'';
+}
+
+function extractNumericVal(text){
+  // grab the primary human-readable range from the text
+  text=(text||'').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+  // range like <1500 - 1000
+  let m=text.match(/<\s*([\d,\.]+)\s*[-–]\s*([\d,\.]+)/);
+  if(m)return`<${m[1]}–${m[2]}`;
+  // >X - Y
+  m=text.match(/>?\s*([\d,\.]+)\s*[-–]\s*([\d,\.]+)\s*x\s*(?:ULN|baseline)/i);
+  if(m)return`${m[1]}–${m[2]}×`;
+  // >X x ULN
+  m=text.match(/>?\s*([\d,\.]+)\s*x\s*(?:ULN|baseline)/i);
+  if(m)return`>${m[1]}×`;
+  // plain range
+  m=text.match(/([\d,\.]+)\s*[-–]\s*([\d,\.]+)/);
+  if(m)return`${m[1]}–${m[2]}`;
+  // single <X
+  m=text.match(/<\s*([\d,\.]+)/);
+  if(m)return`<${m[1]}`;
+  // single >X
+  m=text.match(/>\s*([\d,\.]+)/);
+  if(m)return`>${m[1]}`;
+  return text.length>18?text.slice(0,18)+'…':text;
+}
+
+function badgeHtml(r){
+  if(r.status==='new')return'<span class="badge b-new">New in v6</span>';
+  if(r.status==='removed')return'<span class="badge b-removed">Removed in v6</span>';
+  if(r.change_type==='clinical')return'<span class="badge b-clinical">Clinical change</span>';
+  if(r.change_type==='pediatric')return'<span class="badge b-pediatric">Paediatric language only</span>';
+  return'<span class="badge b-unchanged">Unchanged</span>';
+}
+
+function renderNumericGrades(r,ver){
+  const unit=extractUnit(r);
+  const grades=['g1','g2','g3','g4','g5'];
+  const activeGrades=grades.filter(g=>{
+    const v=ver==='v5'?r.grades[g].v5:r.grades[g].v6;
+    return v&&v.trim()!=='';
+  });
+  if(!activeGrades.length)return'';
+
+  // main scale bar
+  let segs=activeGrades.map(g=>{
+    const v=ver==='v5'?r.grades[g].v5:r.grades[g].v6;
+    const val=extractNumericVal(v);
+    const gc=GRADE_COLORS[g];
+    return`<div class="sb-seg ${gc.seg}">
+      <span class="sb-label">${gc.label}</span>
+      <span class="sb-val">${esc(val)}</span>
+    </div>`;
+  }).join('');
+
+  // v5 vs v6 mini comparison (only when term has changes)
+  let compareHtml='';
+  if(r.status==='changed'||r.change_type==='clinical'){
+    const buildRow=(vver,tag)=>{
+      const segsHtml=grades.map(g=>{
+        const v=vver==='v5'?r.grades[g].v5:r.grades[g].v6;
+        if(!v)return`<div class="vc-seg vc-empty" style="font-size:8px">—</div>`;
+        const val=extractNumericVal(v);
+        const gc=GRADE_COLORS[g];
+        return`<div class="vc-seg ${gc.vc}">${esc(val)}</div>`;
+      }).join('');
+      return`<div class="vc-row vc-${vver}">
+        <span class="vc-tag">${tag}</span>
+        <div class="vc-segs">${segsHtml}</div>
+      </div>`;
+    };
+
+    const hasRealDiff=grades.some(g=>{
+      const v5=r.grades[g].v5,v6=r.grades[g].v6;
+      return extractNumericVal(v5)!==extractNumericVal(v6)&&(v5||v6);
+    });
+
+    if(hasRealDiff){
+      compareHtml=`<div class="ver-compare">
+        <div class="gsec-label" style="margin-top:14px;margin-bottom:8px">Comparison v5 vs v6</div>
+        ${buildRow('v5','v5')}
+        ${buildRow('v6','v6')}
+        <div class="shift-note shift-clinical">Thresholds have changed between versions. Check which version your platform uses.</div>
+      </div>`;
+    }
+  }
+
+  return`<div class="scale-unit-tag">${esc(unit)}</div>
+    <div class="scale-bar">${segs}</div>
+    ${compareHtml}`;
+}
+
+function renderTextGrades(r,ver){
+  const grades=['g1','g2','g3','g4','g5'];
+  const chips=grades.map(g=>{
+    const v=ver==='v5'?r.grades[g].v5:r.grades[g].v6;
+    const gc=GRADE_COLORS[g];
+    const changed=r.grades[g].changed&&r.status!=='new'&&r.status!=='removed';
+    if(!v){
+      return`<div class="chip chip-empty">
+        <div class="chip-head"><div class="chip-dot"></div><span class="chip-glabel">${gc.label}</span></div>
+        <div class="chip-text">Not applicable</div>
+      </div>`;
+    }
+    const changedTag=changed?`<span class="chip-changed-tag">modified in v6</span>`:'';
+    return`<div class="chip ${gc.chip}">
+      <div class="chip-head"><div class="chip-dot"></div><span class="chip-glabel">${gc.label}</span></div>
+      <div class="chip-text">${esc(v)}</div>
+      ${changedTag}
+    </div>`;
+  });
+  return`<div class="chips-grid">${chips.join('')}</div>`;
+}
+
+function renderCard(r,idx){
+  const soc=SOC_SHORT[r.soc]||r.soc;
+  const id='c'+idx;
+  const numeric=isNumeric(r);
+  const ver=r.status==='removed'?'v5':'v6';
+
+  const gradeContent=numeric
+    ?renderNumericGrades(r,ver)
+    :renderTextGrades(r,ver);
+
+  const defText=r.definition_v6||r.definition_v5;
+  const defHtml=defText?`<div class="def-box"><div class="def-label">Definition</div><div class="def-text">${esc(defText)}</div></div>`:'';
+
+  // version toggle for changed terms
+  let verToggle='';
+  if(r.status!=='new'&&r.status!=='removed'&&(r.status==='changed'||r.status==='unchanged')){
+    verToggle=`<div class="ver-selector">
+      <button class="vs-btn active" onclick="switchVer('${id}','v6',this)">v6.0</button>
+      <button class="vs-btn" onclick="switchVer('${id}','v5',this)">v5.0</button>
+    </div>`;
+  }
+
+  return`<div class="card" id="${id}" data-numeric="${numeric}" data-r='${JSON.stringify({term:r.term,soc:r.soc,status:r.status,change_type:r.change_type,grades:r.grades,definition_v5:r.definition_v5,definition_v6:r.definition_v6})}'>
+    <div class="card-header" onclick="toggleCard('${id}')">
+      <div class="ch-left">
+        <div class="ct">${esc(r.term)}</div>
+        <div class="cs">${esc(soc)}</div>
+        <div class="badges">${badgeHtml(r)}</div>
+      </div>
+      <div class="chevron">&#8964;</div>
+    </div>
+    <div class="card-body">
+      <div class="grade-section">
+        <div class="gsec-label">Grading scale</div>
+        ${verToggle}
+        <div id="${id}-grades">${gradeContent}</div>
+      </div>
+      ${defHtml}
+    </div>
+  </div>`;
+}
+
+function toggleCard(id){
+  document.getElementById(id).classList.toggle('open');
+}
+
+function switchVer(cardId,ver,btn){
+  const card=document.getElementById(cardId);
+  const r=JSON.parse(card.dataset.r);
+  const numeric=card.dataset.numeric==='true';
+  const container=document.getElementById(cardId+'-grades');
+  container.innerHTML=numeric?renderNumericGrades(r,ver):renderTextGrades(r,ver);
+  card.querySelectorAll('.vs-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+let ALL=[],activeSoc='all',activeStatus='all',searchQ='';
+let currentFiltered=[],rendered=0;
+const CHUNK=40;
+
+function filtered(){
+  return ALL.filter(r=>{
+    if(activeStatus==='changed'&&r.status!=='changed')return false;
+    if(activeStatus==='clinical'&&r.change_type!=='clinical')return false;
+    if(activeStatus==='pediatric'&&r.change_type!=='pediatric')return false;
+    if(activeStatus==='new'&&r.status!=='new')return false;
+    if(activeStatus==='removed'&&r.status!=='removed')return false;
+    if(activeStatus==='unchanged'&&r.status!=='unchanged')return false;
+    if(activeSoc!=='all'&&r.soc!==activeSoc)return false;
+    if(searchQ){
+      const q=searchQ.toLowerCase();
+      if(!r.term.toLowerCase().includes(q)&&!r.soc.toLowerCase().includes(q)){
+        const gt=Object.values(r.grades).map(g=>(g.v5+g.v6).toLowerCase()).join(' ');
+        if(!gt.includes(q))return false;
+      }
+    }
+    return true;
+  });
+}
+
+function render(){
+  currentFiltered=filtered();rendered=0;
+  const container=document.getElementById('cards');
+  const count=currentFiltered.length;
+  document.getElementById('rc').textContent=`${count} term${count!==1?'s':''} found`;
+  if(!count){
+    container.innerHTML=`<div class="no-results"><div class="nr-big">—</div><p>No results for this search.</p></div>`;
+    return;
+  }
+  const first=currentFiltered.slice(0,CHUNK);
+  container.innerHTML=first.map((r,i)=>renderCard(r,i)).join('');
+  rendered=first.length;
+  if(rendered<count)appendLoadMore(count);
+}
+
+function appendLoadMore(total){
+  const btn=document.createElement('div');
+  btn.className='load-more-wrap';btn.id='lm';
+  btn.innerHTML=`<button class="load-more-btn" onclick="loadMore()">Load more (${total-rendered} remaining)</button>`;
+  document.getElementById('cards').appendChild(btn);
+}
+
+function loadMore(){
+  const next=currentFiltered.slice(rendered,rendered+CHUNK);
+  const lm=document.getElementById('lm');
+  lm.insertAdjacentHTML('beforebegin',next.map((r,i)=>renderCard(r,rendered+i)).join(''));
+  rendered+=next.length;
+  if(rendered>=currentFiltered.length)lm.remove();
+  else lm.querySelector('button').textContent=`Load more (${currentFiltered.length-rendered} remaining)`;
+}
+
+function setStatus(s,btn){
+  activeStatus=s;
+  document.querySelectorAll('.fb').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');render();
+}
+
+function setSoc(s,btn){
+  activeSoc=s;
+  document.querySelectorAll('.soc-btn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');render();
+}
+
+function clearFilters(){
+  searchQ='';activeStatus='all';activeSoc='all';
+  document.getElementById('search').value='';
+  document.querySelectorAll('.fb').forEach(b=>b.classList.remove('active'));
+  document.querySelector('[data-status="all"]').classList.add('active');
+  document.querySelectorAll('.soc-btn').forEach(b=>b.classList.remove('active'));
+  const allBtn=document.querySelector('.soc-btn[data-soc="all"]');
+  if(allBtn)allBtn.classList.add('active');
+  render();
+}
+
+function buildSocList(){
+  const counts={};
+  ALL.forEach(r=>{counts[r.soc]=(counts[r.soc]||0)+1;});
+  const socs=Object.entries(counts).sort((a,b)=>a[0].localeCompare(b[0]));
+  const list=document.getElementById('soc-list');
+  let html=`<button class="soc-btn active" data-soc="all" onclick="setSoc('all',this)"><span>All</span><span class="sc">${ALL.length}</span></button>`;
+  for(const[soc,cnt]of socs){
+    const short=SOC_SHORT[soc]||soc;
+    html+=`<button class="soc-btn" data-soc="${esc(soc)}" onclick="setSoc('${esc(soc)}',this)"><span>${esc(short)}</span><span class="sc">${cnt}</span></button>`;
+  }
+  list.innerHTML=html;
+}
+
+let st;
+document.getElementById('search').addEventListener('input',e=>{
+  clearTimeout(st);st=setTimeout(()=>{searchQ=e.target.value.trim();render();},250);
+});
+
+fetch('ctcae_data.json')
+  .then(r=>r.json())
+  .then(d=>{ALL=d;buildSocList();render();})
+  .catch(()=>{
+    document.getElementById('cards').innerHTML='<div class="no-results"><p>Error loading ctcae_data.json. Make sure both files are in the same folder.</p></div>';
+  });
+</script>
+</body>
+</html>
